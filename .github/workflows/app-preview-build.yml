@@ -1,0 +1,42 @@
+# Manual "preview build" of the mobile app via EAS. Fires on demand from the
+# Actions tab — you pick a platform, EAS builds it, the build shows up in the
+# Expo dashboard for TestFlight / Google Play internal testers.
+#
+# Requires EXPO_TOKEN in repo Secrets (create at expo.dev/accounts/[you]/settings/access-tokens).
+
+name: EAS preview build
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Which platform?'
+        required: true
+        default: 'all'
+        type: choice
+        options: ['all', 'ios', 'android']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: liva-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: liva-app/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: npm ci --legacy-peer-deps
+
+      - name: EAS build
+        run: eas build --profile preview --platform ${{ inputs.platform }} --non-interactive --no-wait

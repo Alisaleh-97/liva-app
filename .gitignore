@@ -1,0 +1,47 @@
+# macOS
+.DS_Store
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env / secrets — never commit these
+.env
+.env.*
+!.env.example
+
+# Expo / EAS
+.expo/
+.expo-shared/
+dist/
+web-build/
+liva-app/secrets/
+
+# Local DB + uploads (server)
+server/prisma/dev.db
+server/prisma/dev.db-journal
+server/prisma/migrations/dev/
+server/uploads/
+server/data/
+
+# Test coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Local archives, backup copies, and assistant settings
+/liva app.zip
+/liva-app/.upgrade-backup/
+/.claude/
+.thumbnail
+
+
+# Local database snapshots
+server/prisma/*.db
+server/prisma/*.db-*
+

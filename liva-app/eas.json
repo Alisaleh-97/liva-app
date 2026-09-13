@@ -1,0 +1,53 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "_comment": "Three build profiles. `development` runs the dev client with live JS reload; `preview` builds an internal .ipa/.apk your team can install without the store; `production` is what you upload to Apple/Google. Env vars are pulled from EAS project secrets — never commit real values.",
+
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios":     { "resourceClass": "m-medium" },
+      "android": { "gradleCommand": ":app:assembleDebug" }
+    },
+
+    "preview": {
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://liva-staging.up.railway.app"
+      },
+      "ios":     { "simulator": false, "resourceClass": "m-medium" },
+      "android": { "buildType": "apk" }
+    },
+
+    "production": {
+      "autoIncrement": true,
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL":     "https://api.liva.app",
+        "EXPO_PUBLIC_SENTRY_DSN":  "@sentry-dsn",
+        "EXPO_PUBLIC_POSTHOG_KEY": "@posthog-key"
+      },
+      "ios":     { "resourceClass": "m-medium" },
+      "android": { "buildType": "app-bundle" }
+    }
+  },
+
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "YOUR_APPLE_ID_EMAIL",
+        "ascAppId": "YOUR_APP_STORE_CONNECT_APP_ID",
+        "appleTeamId": "YOUR_APPLE_TEAM_ID"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./secrets/play-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+node_modules
+.env
+*.log
+
+# Legacy file-based user store — no longer used (migrated to Prisma).
+data/
+
+# Local SQLite DB + Prisma migrations artifacts
+prisma/dev.db
+prisma/dev.db-journal
+prisma/migrations/dev/
+
+# Locally-uploaded product images (Cloudinary/S3 in prod)
+uploads/

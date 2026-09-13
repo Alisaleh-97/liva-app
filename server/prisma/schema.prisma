@@ -1,0 +1,232 @@
+// LIVA data model. Uses SQLite locally so you don't need to install Postgres
+// to run the dev server. To move to production Postgres, change `provider` to
+// "postgresql" and set DATABASE_URL to a real connection string — no other
+// code changes needed. Every Prisma model below works on both.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ── User ────────────────────────────────────────────────────────────────
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String
+  firstName     String
+  lastName      String
+  phone         String   @unique
+  role          String   @default("shopper")   // "shopper" | "business"
+  provider      String   @default("email")     // "email" | "google" | "apple"
+  providerSubject String? @unique               // immutable Google/Apple account id
+  avatarSeed    String?
+  country       String?
+  dob           String?
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Business fields (nullable for shoppers)
+  businessName     String?
+  businessCategory String?
+  businessAddress  String?
+  taxId            String?
+  plan             String?
+  billing          String?
+  planRenewsAt     DateTime?
+  planPaymentId    String?  @unique
+  stripeCustomerId String?
+  subscriptionStatus String?
+
+  products      Product[]      @relation("SellerProducts")
+  orders        Order[]        @relation("BuyerOrders")
+  sellerOrders  Order[]        @relation("SellerOrders")
+  notifications Notification[]
+  passwordResetCodes PasswordResetCode[]
+  pushTokens PushToken[]
+  paymentAttempts PaymentAttempt[]
+}
+
+// Short-lived, one-time codes for secure password recovery. Only a keyed
+// digest is stored; the six-digit code itself never lives in the database.
+model PasswordResetCode {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+}
+
+// ── Product ─────────────────────────────────────────────────────────────
+model Product {
+  id          String   @id @default(cuid())
+  sellerId    String
+  seller      User     @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
+
+  name        String
+  nameAr      String?
+  brand       String?
+  audience    String   @default("unisex")    // women/men/kids/unisex
+  type        String                          // clothing/beauty/electronics…
+  sub         String?                         // subcategory
+  price       Float
+  was         Float?                          // was-price for discount display
+  rating      Float    @default(0)
+  reviews     Int      @default(0)
+  seed        String                          // deterministic image gradient
+  imageUrls   String                          // JSON array of URLs (SQLite has no []-type)
+  badge       String?                          // AI Pick / Trending / Hot / Price drop
+  stock       Int      @default(0)
+  shipFrom    Int      @default(2)
+  shipTo      Int      @default(4)
+  install     Boolean  @default(false)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders      Order[]
+  paymentAttempts PaymentAttempt[]
+
+  @@index([type])
+  @@index([sellerId])
+  @@index([active])
+}
+
+// ── Order ───────────────────────────────────────────────────────────────
+model Order {
+  id           String   @id @default(cuid())
+  buyerId      String
+  buyer        User     @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId     String
+  seller       User     @relation("SellerOrders", fields: [sellerId], references: [id])
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id])
+  qty          Int      @default(1)
+  unitPrice    Float
+  total        Float
+  status       String   @default("confirmed")   // confirmed/packed/shipped/ofd/delivered/cancelled
+  addressLine  String?
+  deliverySlot String?
+  paymentMethod String  @default("stripe") // stripe/cod
+  paymentStatus String  @default("paid")   // paid/cod_pending/refunded
+  paymentAttemptId String? @unique
+  paymentAttempt PaymentAttempt? @relation(fields: [paymentAttemptId], references: [id])
+  placedAt     DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([buyerId])
+  @@index([sellerId])
+  @@index([status])
+}
+
+// Server-issued checkout token. It freezes the trusted product, quantity and
+// amount before Stripe opens, and makes order finalisation idempotent.
+model PaymentAttempt {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product  @relation(fields: [productId], references: [id])
+  qty              Int
+  amountCents      Int
+  currency         String   @default("usd")
+  method           String   @default("stripe") // stripe/cod
+  providerIntentId String?  @unique
+  status           String   @default("prepared") // prepared/completed/expired/refunded
+  expiresAt        DateTime
+  usedAt           DateTime?
+  createdAt        DateTime @default(now())
+  order            Order?
+
+  @@index([userId, status])
+  @@index([productId])
+  @@index([expiresAt])
+}
+
+// ── Notification ────────────────────────────────────────────────────────
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  kind      String                       // order/price/live/message/system
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  data      String?                       // JSON payload
+  createdAt DateTime @default(now())
+
+  @@index([userId, read])
+}
+
+model PushToken {
+  id           String   @id @default(cuid())
+  token        String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform     String   @default("unknown")
+  registeredAt DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Live auction state is owned by the server. Clients only render snapshots
+// and submit bids; they never decide the winning price locally.
+model LiveAuction {
+  id            String       @id
+  productId     String
+  sellerId      String
+  startingBid   Float
+  currentBid    Float
+  minIncrement  Float
+  endsAt        DateTime
+  status        String       @default("live") // scheduled/live/ended/cancelled
+  bidCount      Int          @default(0)
+  winnerId      String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  bids          AuctionBid[]
+
+  @@index([status, endsAt])
+  @@index([sellerId])
+}
+
+model AuctionBid {
+  id          String      @id @default(cuid())
+  auctionId   String
+  auction     LiveAuction @relation(fields: [auctionId], references: [id], onDelete: Cascade)
+  userId      String
+  userName    String
+  avatarSeed  String?
+  amount      Float
+  requestId   String?     @unique
+  createdAt   DateTime    @default(now())
+
+  @@index([auctionId, createdAt])
+  @@index([userId])
+}
+
+// Realtime shopping and community chat history. Presence stays ephemeral in
+// the WebSocket hub, while the latest messages survive server restarts.
+model LiveRoomMessage {
+  id         String   @id @default(cuid())
+  roomId     String
+  userId     String
+  userName   String
+  avatarSeed String?
+  text       String
+  createdAt  DateTime @default(now())
+
+  @@index([roomId, createdAt])
+  @@index([userId])
+}

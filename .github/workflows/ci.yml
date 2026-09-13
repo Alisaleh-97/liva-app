@@ -1,0 +1,88 @@
+# CI — runs on every push + PR. Two independent jobs so the app and server
+# fail-fast in isolation: a red typecheck on one doesn't hide problems on
+# the other.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # ── Mobile app: typecheck + tests ──────────────────────────────────
+  liva-app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: liva-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: liva-app/package-lock.json
+
+      - name: Install
+        # Legacy peer deps because react-test-renderer's peer-range doesn't
+        # match React 18 exactly — safe here.
+        run: npm ci --legacy-peer-deps
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Tests
+        run: npm test -- --ci --coverage
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: liva-app-coverage
+          path: liva-app/coverage/
+
+  # ── Backend: lint + Prisma validate + smoke boot ───────────────────
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    env:
+      # Anything a runtime import validates — Zod fails startup without these
+      JWT_SECRET: ci-only-32-char-secret-value-abcdefghijk
+      NODE_ENV: test
+      DATABASE_URL: 'file:./ci.db'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma validate
+        run: npx prisma validate
+
+      - name: Prisma push (creates CI SQLite DB)
+        run: npx prisma db push --skip-generate
+
+      - name: Smoke boot (server starts and answers /health)
+        # Boots the server, curls /health, then kills it. Any crash on
+        # startup fails the job.
+        run: |
+          node src/index.js &
+          SERVER_PID=$!
+          for i in {1..20}; do
+            if curl -fsS http://localhost:3001/health > /dev/null; then
+              echo "server healthy"; break
+            fi
+            sleep 1
+          done
+          curl -sS http://localhost:3001/health
+          kill $SERVER_PID

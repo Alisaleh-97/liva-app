@@ -1,0 +1,113 @@
+{
+  "expo": {
+    "name": "LIVA",
+    "slug": "liva-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "scheme": "liva",
+    "icon": "./assets/icon.png",
+    "primaryColor": "#635BFF",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "bundleIdentifier": "com.liva.app",
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "LIVA uses the camera so you can scan barcodes, try items on with AR, and shoot product reviews.",
+        "NSPhotoLibraryUsageDescription": "LIVA uses your photo library so you can upload product photos and share what you buy.",
+        "NSMicrophoneUsageDescription": "LIVA uses the microphone for voice search and for talking during live shopping sessions.",
+        "NSLocationWhenInUseUsageDescription": "LIVA uses your location to show nearby stores and estimate delivery times — never in the background.",
+        "NSFaceIDUsageDescription": "Use Face ID to sign in and confirm purchases securely.",
+        "NSUserTrackingUsageDescription": "This lets LIVA measure ad performance and show you deals that fit your taste. You can decline and still use the app fully.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "associatedDomains": [
+        "applinks:liva.app",
+        "applinks:www.liva.app"
+      ]
+    },
+    "android": {
+      "package": "com.liva.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#07111F"
+      },
+      "permissions": [
+        "CAMERA",
+        "READ_MEDIA_IMAGES",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "POST_NOTIFICATIONS",
+        "USE_BIOMETRIC"
+      ],
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "liva.app"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "apiUrl": "http://localhost:3001"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LIVA uses your photo library so you can upload product photos and share what you buy."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#635BFF"
+        }
+      ],
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.liva.app",
+          "enableGooglePay": true
+        }
+      ],
+      "expo-font",
+      "expo-localization",
+      "expo-status-bar",
+      "expo-web-browser",
+      "expo-apple-authentication",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash.png",
+          "imageWidth": 220,
+          "resizeMode": "contain",
+          "backgroundColor": "#07111F"
+        }
+      ]
+    ]
+  }
+}
